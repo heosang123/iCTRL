@@ -41,7 +41,10 @@ class FastActionHandler {
         eventRecord.add(eventPath)
 
         do {
+            let synthStart = ProcessInfo.processInfo.systemUptime
             try eventRecord.synthesize()
+            let synthMs = (ProcessInfo.processInfo.systemUptime - synthStart) * 1000
+            iCTRLUITests.logBuffer.append(String(format: "LAB tap synth=%.3fms", synthMs))
             return (["message": .string("Fast tapped at (\(x), \(y))")], nil)
         } catch {
             return (nil, .serverError("Fast tap failed: \(error.localizedDescription)"))
