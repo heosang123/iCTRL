@@ -1,0 +1,36 @@
+
+name: iCTRL Research Build
+
+on:
+  push:
+    branches:
+      - ictrl-native-lab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check Xcode
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          brew list xcodegen || brew install xcodegen
+
+      - name: Build iCTRL IPAs
+        run: make ipa UNSIGNED=1
+
+      - name: Upload research build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ictrl-research-baseline
+          path: release/*.ipa
+          if-no-files-found: error
