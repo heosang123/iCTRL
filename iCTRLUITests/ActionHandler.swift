@@ -1757,11 +1757,14 @@ class ActionHandler {
             // Sample what sits under the point BEFORE tapping: afterwards the UI
             // may have moved (a keyboard appearing shifts everything up), so a
             // post-tap probe would describe the new layout, not what was hit.
+            let hitProbeStart = ProcessInfo.processInfo.systemUptime
             let hit = elementUnder(x: x, y: y)
+            let hitProbeMs = (ProcessInfo.processInfo.systemUptime - hitProbeStart) * 1000
             if let err = alertRaisedBeforeTouch(x: x, y: y) { return (nil, err) }
             if case .string(let l)? = hit?["label"] { lastTapTarget = (l, resolveForegroundBundleId() ?? "", nowMonotonic) }
             else { lastTapTarget = nil }
             var r = fastHandler.fastTap(x: x, y: y)
+            iCTRLUITests.logBuffer.append(String(format: "LAB tap hitProbe=%.3fms", hitProbeMs))
             if var data = r.0 {
                 if var h = hit {
                     if case .string(let note)? = h.removeValue(forKey: "note") { data["hint"] = .string(note) }
