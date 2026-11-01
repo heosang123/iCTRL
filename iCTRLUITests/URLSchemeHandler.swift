@@ -19,7 +19,7 @@ import ObjectiveC.runtime
 final class URLSchemeHandler {
     static let shared = URLSchemeHandler()
 
-    static let scheme = "ictrl"
+    static let scheme = "ictrl-lab"
 
     private let lock = NSLock()
     private var pendingURLs: [URL] = []
