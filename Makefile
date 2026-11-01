@@ -149,14 +149,14 @@ ipa: build
 	@# build-for-testing embeds a .dSYM inside the app; it is debug-symbol data,
 	@# not needed at runtime, and bloats the IPA (~3MB). Strip it before packaging.
 	@find "$(BUILD_DIR)/$(RUNNER_APP)" -name "*.dSYM" -exec rm -rf {} + 2>/dev/null || true
-	@echo "🔗 Registering ictrl:// URL scheme..."
+	@echo "🔗 Registering ictrl-lab:// URL scheme..."
 	@PLIST="$(BUILD_DIR)/$(RUNNER_APP)/Info.plist"; \
 	/usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$$PLIST" 2>/dev/null || true; \
 	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$$PLIST"; \
 	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$$PLIST"; \
 	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.openminis.ictrl" "$$PLIST"; \
 	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$$PLIST"; \
-	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string ictrl" "$$PLIST"
+	/usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string ictrl-lab" "$$PLIST"
 	@echo "📡 Declaring the nearby Bonjour service type..."
 	@# Advertising _ictrl._tcp (nearby discovery) fails with NoAuth unless the
 	@# app declares the type. Only the nearby listener depends on it.
