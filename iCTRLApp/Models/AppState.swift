@@ -9,7 +9,7 @@ class AppState: ObservableObject {
     @Published var serverError: String?
 
     @AppStorage("autoStartServer") var autoStartServer = false
-    @AppStorage("serverPort") var serverPort = 8200
+    @AppStorage("serverPort") var serverPort = 8201
     @AppStorage("allowRemoteAccess") var allowRemoteAccess = false
 
     private var server: JSONRPCServer?
