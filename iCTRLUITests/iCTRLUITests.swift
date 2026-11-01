@@ -1214,6 +1214,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
             }
         }
         srv.onRPCRequest = { [weak self] method, params, completion in
+            let rpcReceivedAt = ProcessInfo.processInfo.systemUptime
             guard let self = self else {
                 completion(nil, .internalError)
                 return
@@ -1266,6 +1267,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
 
             queue.async {
                 let start = ProcessInfo.processInfo.systemUptime
+                let queueWaitMs = (start - rpcReceivedAt) * 1000
                 var result: ([String: JSONValue]?, JSONRPCError?) = (nil, .internalError)
                 started.set(true)
                 if isUIMethod { self.setUIInFlight(method) }
@@ -1282,7 +1284,9 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
                 // crash). So we hop to the main thread for the actual dispatch, and
                 // wrap it in an Obj-C @try/@catch so a stale/non-hittable element
                 // turns into a JSON-RPC error instead of a SIGABRT.
+                var mainEnteredAt: TimeInterval = 0
                 let work = {
+                    mainEnteredAt = ProcessInfo.processInfo.systemUptime
                     if method == "config" {
                         result = self.handleConfig(params)
                     } else if let handler = self.actionHandler {
@@ -1302,10 +1306,19 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
                 // data/network methods (config, resolve_app, device_info, list_apps,
                 // logs, lock state) run directly on the RPC queue — no reason to
                 // hop to (and potentially block) the main thread for them.
+                let mainDispatchAt = ProcessInfo.processInfo.systemUptime
                 if Self.mainThreadMethods.contains(method) && !Thread.isMainThread {
                     DispatchQueue.main.sync(execute: work)
                 } else {
                     work()
+                }
+
+                if method == "tap" {
+                    Self.logBuffer.append(String(
+                        format: "LAB tap queue=%.3fms main=%.3fms",
+                        queueWaitMs,
+                        (mainEnteredAt - mainDispatchAt) * 1000
+                    ))
                 }
 
                 let ms = (ProcessInfo.processInfo.systemUptime - start) * 1000
