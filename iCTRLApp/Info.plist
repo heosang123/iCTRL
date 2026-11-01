@@ -9,7 +9,7 @@
 			<string>com.openminis.ictrl.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>ictrl-app</string>
+                <string>ictrl-lab-app</string>
 			</array>
 		</dict>
 	</array>
