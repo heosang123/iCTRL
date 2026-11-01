@@ -57,11 +57,11 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
     }
     private var nearbyEnabled = false
 
-    /// Persisted listen port. Absent key → 8200.
+    /// Persisted listen port. Absent key → 8201.
     private static var persistedPort: UInt16 {
         get {
             let v = UserDefaults.standard.integer(forKey: "serverPort")
-            return (v > 0 && v <= 65535) ? UInt16(v) : 8200
+            return (v > 0 && v <= 65535) ? UInt16(v) : 8201
         }
         set { UserDefaults.standard.set(Int(newValue), forKey: "serverPort") }
     }
@@ -407,7 +407,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
 
         actionHandler = ActionHandler(app: app)
 
-        // Restore persisted preferences (fresh install → local only, port 8200)
+        // Restore persisted preferences (fresh install → local only, port 8201)
         remoteAccessEnabled = Self.persistedRemoteAccess
         let port = Self.persistedPort
         server = JSONRPCServer(port: port, localOnly: !remoteAccessEnabled)
@@ -451,7 +451,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
                 announceRemoteReady(address: address)
             } else {
                 Self.persistedNearby = false
-                Self.logBuffer.append("🔒 Server started on 127.0.0.1:8200 (local only)")
+                Self.logBuffer.append("🔒 Server started on 127.0.0.1:\(port) (local only)")
                 postStatusNotification(detail: L10n.t(.localOnlyBody))
             }
         } catch {
@@ -699,8 +699,8 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
 
         let running = server?.isRunning ?? false
         Self.logBuffer.append("🔙 server running=\(running) after wait")
-        let address = remoteAccessEnabled ? "\(getDeviceAddress()):\(server?.port ?? 8200)"
-                                          : "127.0.0.1:\(server?.port ?? 8200)"
+        let address = remoteAccessEnabled ? "\(getDeviceAddress()):\(server?.port ?? Self.persistedPort)"
+                                          : "127.0.0.1:\(server?.port ?? Self.persistedPort)"
         let status = running ? "ready" : "failed"
 
         // Append status + address to the callback URL.
@@ -731,7 +731,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
     /// Accept a callback either as a full URL ("minis://home") or as a bare scheme
     /// ("minis" → "minis://"), so callers don't have to URL-encode a scheme.
     /// The iCTRL app's URL scheme.
-    static let companionScheme = "ictrl-app"
+    static let companionScheme = "ictrl-lab-app"
 
     static func normalizeCallback(_ raw: String) -> URL? {
         if let u = URL(string: raw), u.scheme != nil {
@@ -1451,7 +1451,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
         }
 
         var restartNeeded = false
-        var newPort = UInt16(server?.port ?? 8200)
+        var newPort = UInt16(server?.port ?? Self.persistedPort)
         var clearedSessions = 0
         var revokedSession: String?
 
@@ -1528,7 +1528,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
             Self.logBuffer.append(on ? "📡 Nearby discovery enabled via config" : "📴 Nearby discovery disabled via config")
             if !restartNeeded {
                 if on { server?.startNearby() } else { server?.stopNearby() }
-                let port = UInt16(server?.port ?? 8200)
+                let port = UInt16(server?.port ?? Self.persistedPort)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     guard let self = self else { return }
                     self.postStatusNotification(detail: self.addressLines(port: port))
@@ -1645,7 +1645,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
     /// The runner's own URL scheme, used to bring it back to the foreground so
     /// iOS can present the Local Network permission prompt (which only appears
     /// while the app is foreground).
-    private static let selfWakeURL = URL(string: "ictrl://start")!
+    private static let selfWakeURL = URL(string: "ictrl-lab://start")!
 
     /// Holds the multicast connection alive briefly while it triggers the prompt.
     private var lnTriggerConnection: NWConnection?
@@ -1927,7 +1927,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
         let mins = Int(ProcessInfo.processInfo.systemUptime - Self.serverStartedAt) / 60
         let human = mins < 60 ? "\(mins)m" : "\(mins / 60)h\(mins % 60)m"
         postStatusNotification(
-            detail: "\(addr):\(server?.port ?? 8200) · \(sessions) client\(sessions == 1 ? "" : "s") · up \(human)",
+            detail: "\(addr):\(server?.port ?? Self.persistedPort) · \(sessions) client\(sessions == 1 ? "" : "s") · up \(human)",
             silent: true
         )
     }
@@ -1988,7 +1988,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
         // posts again when it does. Refresh now so the menu flips immediately.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
-            self.postStatusNotification(detail: self.addressLines(port: self.server?.port ?? 8200))
+            self.postStatusNotification(detail: self.addressLines(port: self.server?.port ?? Self.persistedPort))
         }
     }
 
@@ -2006,7 +2006,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
         remoteAccessEnabled = true
         Self.persistedRemoteAccess = true  // remember for next launch
 
-        let newServer = JSONRPCServer(port: 8200, localOnly: false)
+        let newServer = JSONRPCServer(port: Self.persistedPort, localOnly: false)
         wireNewServer(newServer)
 
         do {
@@ -2028,16 +2028,16 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
     private func announceRemoteReady(address: String) {
         let net = NetworkTypeMonitor.shared.current
         if lanAddress() != nil {
-            Self.logBuffer.append("🌐 Server started on \(address):8200 (remote, \(net.rawValue)) — verifying reachability")
+            Self.logBuffer.append("🌐 Server started on \(address):\(server?.port ?? Self.persistedPort) (remote, \(net.rawValue)) — verifying reachability")
             verifyRemoteReachableThenNotify(address: address)
         } else {
             // Cellular / undetermined: no LAN, so no self-check and no failure.
-            Self.logBuffer.append("📶 Server started on \(address):8200 (\(net.rawValue) — on-device only, skipping remote self-check)")
+            Self.logBuffer.append("📶 Server started on \(address):\(server?.port ?? Self.persistedPort) (\(net.rawValue) — on-device only, skipping remote self-check)")
             // Clear any stale failure notice from a previous Wi-Fi session.
             reportedRemoteFailure = false
             clearRemoteFailedNotification()
             postStatusNotification(
-                detail: addressLines(port: server?.port ?? 8200) + " — " + L10n.t(.onDeviceOnlySuffix)
+                detail: addressLines(port: server?.port ?? Self.persistedPort) + " — " + L10n.t(.onDeviceOnlySuffix)
             )
         }
     }
@@ -2051,7 +2051,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
         nearbyEnabled = false               // nearby needs remote access
         Self.persistedNearby = false
 
-        let newServer = JSONRPCServer(port: 8200, localOnly: true)
+        let newServer = JSONRPCServer(port: Self.persistedPort, localOnly: true)
         wireNewServer(newServer)
 
         do {
@@ -2207,7 +2207,7 @@ final class iCTRLUITests: XCTestCase, UNUserNotificationCenterDelegate {
             return
         }
         verifyInFlight = true
-        let portNum = UInt16(server?.port ?? 8200)
+        let portNum = UInt16(server?.port ?? Self.persistedPort)
         let wasFailed = reportedRemoteFailure
         selfConnectCheck(host: address, port: portNum, timeout: 1.0) { [weak self] ok in
             guard let self = self else { return }
